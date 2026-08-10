@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}إدارة المستخدمين{% endblock %}
+{% block page_title %}إدارة المستخدمين{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-end mb-3">
+    <button class="btn text-white" style="background: var(--primary);" data-bs-toggle="modal" data-bs-target="#newUserModal">
+        <i class="fa-solid fa-user-plus"></i> إضافة مستخدم جديد
+    </button>
+</div>
+
+<div class="card-panel">
+    <div class="table-responsive">
+    <table class="table table-hover">
+        <thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>القسم</th><th>الحالة</th><th>حفظ</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+        <tr>
+            <form method="POST" action="{{ url_for('admin.update_user', user_id=u.id) }}">
+            <td>{{ u.name }}</td>
+            <td class="small text-muted">{{ u.email }}</td>
+            <td>
+                <select name="role" class="form-select form-select-sm">
+                    {% for key in roles %}
+                    <option value="{{ key }}" {{ 'selected' if u.role==key }}>{{ role_labels[key] }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <select name="department_id" class="form-select form-select-sm">
+                    <option value="">بدون قسم</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.id }}" {{ 'selected' if u.department_id==dept.id }}>{{ dept.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td class="text-center">
+                <input type="checkbox" class="form-check-input" name="active" {{ 'checked' if u.active }}>
+            </td>
+            <td><button class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-floppy-disk"></i></button></td>
+            </form>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="modal fade" id="newUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('admin.new_user') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">إضافة مستخدم جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small">الاسم الكامل</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">البريد الإلكتروني</label>
+                        <input type="email" name="email" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">كلمة السر</label>
+                        <input type="password" name="password" class="form-control" required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">الدور</label>
+                        <select name="role" class="form-select">
+                            {% for key in roles %}
+                            <option value="{{ key }}">{{ role_labels[key] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">القسم</label>
+                        <select name="department_id" class="form-select">
+                            <option value="">بدون قسم</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.id }}">{{ dept.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn text-white" style="background: var(--primary);">إنشاء الحساب</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

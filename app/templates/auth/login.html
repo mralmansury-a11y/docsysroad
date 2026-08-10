@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}تسجيل الدخول - {{ app_name }}{% endblock %}
+{% block guest_content %}
+<div class="guest-wrap">
+    <div class="guest-card">
+        <div class="guest-card-header">
+            <div class="brand-logo-wrap">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ app_name }}">
+            </div>
+            <h1>منظومة تتبع المستندات الداخلية</h1>
+            <p>تسجيل الوارد والصادر، الترقيم التلقائي، والأرشفة مع التحقق عبر QR</p>
+        </div>
+        <div class="guest-card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">البريد الإلكتروني</label>
+                    <input type="email" name="email" class="form-control" required autofocus placeholder="name@example.com">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">كلمة السر</label>
+                    <input type="password" name="password" class="form-control" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-lg w-100 text-white" style="background: var(--primary);">
+                    <i class="fa-solid fa-right-to-bracket"></i> تسجيل الدخول
+                </button>
+            </form>
+
+            <div class="demo-accounts">
+                <strong>حسابات تجريبية</strong> (بعد تشغيل أمر <code>flask seed</code>):<br>
+                <code>admin@example.com</code> — مدير النظام<br>
+                <code>head.hr@example.com</code> — رئيس قسم<br>
+                <code>employee@example.com</code> — موظف<br>
+                <code>archivist@example.com</code> — موظف أرشيف<br>
+                كلمة السر لجميع الحسابات: <code>password123</code>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

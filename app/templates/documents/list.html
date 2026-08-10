@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}المستندات{% endblock %}
+{% block page_title %}المستندات{% endblock %}
+{% block content %}
+
+<div class="card-panel">
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small">بحث بالعنوان أو الرقم</label>
+            <input type="text" name="q" class="form-control" value="{{ filters.get('q','') }}" placeholder="مثال: IN-2026-0042">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">النوع</label>
+            <select name="type" class="form-select">
+                <option value="">الكل</option>
+                {% for key, label in doc_types.items() %}
+                <option value="{{ key }}" {{ 'selected' if filters.get('type')==key }}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if current_user.can_view_all_departments() %}
+        <div class="col-md-2">
+            <label class="form-label small">القسم</label>
+            <select name="department_id" class="form-select">
+                <option value="">الكل</option>
+                {% for dept in departments %}
+                <option value="{{ dept.id }}" {{ 'selected' if filters.get('department_id')|string==dept.id|string }}>{{ dept.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="col-md-2">
+            <label class="form-label small">من تاريخ</label>
+            <input type="date" name="date_from" class="form-control" value="{{ filters.get('date_from','') }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">إلى تاريخ</label>
+            <input type="date" name="date_to" class="form-control" value="{{ filters.get('date_to','') }}">
+        </div>
+        <div class="col-md-1 d-grid">
+            <button class="btn text-white" style="background: var(--primary);"><i class="fa-solid fa-filter"></i></button>
+        </div>
+    </form>
+</div>
+
+<div class="card-panel">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small">{{ pagination.total }} نتيجة</span>
+        {% if current_user.can_upload_document() %}
+        <a href="{{ url_for('documents.new_document') }}" class="btn btn-sm text-white" style="background: var(--accent); color: var(--primary) !important; font-weight:700;">
+            <i class="fa-solid fa-plus"></i> رفع وإصدار مستند جديد
+        </a>
+        {% endif %}
+    </div>
+
+    {% if documents %}
+    <div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+        <tr>
+            <th>الرقم</th><th>العنوان</th><th>النوع</th><th>القسم</th><th>المُرسَل إليه</th><th>الحالة</th><th>التاريخ</th><th></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for d in documents %}
+        <tr>
+            <td><span class="doc-number-pill">{{ d.number }}</span></td>
+            <td>{{ d.title }}</td>
+            <td><span class="badge-type badge-type-{{ d.type }}">{{ d.type_label() }}</span></td>
+            <td>{{ d.department.name if d.department else "—" }}</td>
+            <td class="small text-muted">{{ d.recipient_name }}</td>
+            <td><span class="badge bg-success-subtle text-success-emphasis">{{ d.status_label() }}</span></td>
+            <td class="small text-muted">{{ d.created_at.strftime("%Y-%m-%d") }}</td>
+            <td><a href="{{ url_for('documents.detail', doc_id=d.id) }}" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-eye"></i></a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    {% if pagination.pages > 1 %}
+    <nav>
+        <ul class="pagination pagination-sm justify-content-center mt-3">
+            {% for p in range(1, pagination.pages + 1) %}
+            {% set page_args = filters.to_dict() %}
+            {% set _ = page_args.update({'page': p}) %}
+            <li class="page-item {{ 'active' if p == pagination.page }}">
+                <a class="page-link" href="{{ url_for('documents.list_documents') }}?{{ page_args | urlencode }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="fa-solid fa-folder-open fa-2x mb-2"></i>
+        <p>لا توجد مستندات مطابقة</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

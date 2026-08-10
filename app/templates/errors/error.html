@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خطأ {{ code }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo.png') }}">
+    <style>
+        body { font-family:'Cairo',sans-serif; background:#f4f6fb; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
+        .box { text-align:center; }
+        .box img { height: 36px; margin-bottom: 18px; }
+        .box i { font-size: 60px; color:#2c3c6f; }
+        .box h1 { font-size: 70px; font-weight:800; color:#2c3c6f; margin: 10px 0 0; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ app_name }}">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <h1>{{ code }}</h1>
+        <p class="text-muted">{{ message }}</p>
+        <a href="/" class="btn btn-dark" style="background:#2c3c6f; border:none;">العودة للرئيسية</a>
+    </div>
+</body>
+</html>

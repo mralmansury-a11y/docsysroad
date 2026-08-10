@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}لوحة التحكم{% endblock %}
+{% block page_title %}لوحة التحكم{% endblock %}
+{% block content %}
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--primary);"><i class="fa-solid fa-file-lines"></i></div>
+        <div><div class="stat-value">{{ total_docs }}</div><div class="stat-label">إجمالي المستندات</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--accent);"><i class="fa-solid fa-calendar-check"></i></div>
+        <div><div class="stat-value">{{ this_month_count }}</div><div class="stat-label">مستندات هذا الشهر</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #1362b3;"><i class="fa-solid fa-inbox"></i></div>
+        <div><div class="stat-value">{{ incoming_count }}</div><div class="stat-label">وارد</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #b3560e;"><i class="fa-solid fa-paper-plane"></i></div>
+        <div><div class="stat-value">{{ outgoing_count }}</div><div class="stat-label">صادر</div></div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card-panel">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0"><i class="fa-solid fa-clock-rotate-left text-secondary"></i> أحدث المستندات</h5>
+                <a href="{{ url_for('documents.list_documents') }}" class="small">عرض الكل</a>
+            </div>
+            {% if recent_docs %}
+            <div class="table-responsive">
+            <table class="table table-hover">
+                <thead><tr><th>الرقم</th><th>العنوان</th><th>النوع</th><th>القسم</th><th>التاريخ</th></tr></thead>
+                <tbody>
+                {% for d in recent_docs %}
+                    <tr onclick="location.href='{{ url_for('documents.detail', doc_id=d.id) }}'" style="cursor:pointer;">
+                        <td><span class="doc-number-pill">{{ d.number }}</span></td>
+                        <td>{{ d.title }}</td>
+                        <td><span class="badge-type badge-type-{{ d.type }}">{{ d.type_label() }}</span></td>
+                        <td>{{ d.department.name if d.department else "—" }}</td>
+                        <td class="text-muted small">{{ d.created_at.strftime("%Y-%m-%d") }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <p class="text-muted">لا توجد مستندات بعد.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card-panel">
+            <h5><i class="fa-solid fa-chart-simple text-secondary"></i> المستندات حسب القسم</h5>
+            {% if by_department %}
+                {% set max_count = by_department | map(attribute=1) | max %}
+                {% for name, count in by_department %}
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>{{ name }}</span><span class="text-muted">{{ count }}</span>
+                    </div>
+                    <div class="progress" style="height: 8px; border-radius: 6px;">
+                        <div class="progress-bar" style="width: {{ (count / max_count * 100) | round(0) }}%; background: var(--primary);"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted">لا توجد بيانات كافية بعد.</p>
+            {% endif %}
+        </div>
+
+        <div class="card-panel">
+            <h5><i class="fa-solid fa-user-clock text-secondary"></i> مستنداتي الأخيرة</h5>
+            {% if my_docs %}
+                {% for d in my_docs %}
+                <a href="{{ url_for('documents.detail', doc_id=d.id) }}" class="d-flex justify-content-between align-items-center py-2" style="border-bottom: 1px solid var(--border);">
+                    <span>{{ d.title }}</span>
+                    <span class="doc-number-pill">{{ d.number }}</span>
+                </a>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-0">لم تقم بإصدار أي مستند بعد.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

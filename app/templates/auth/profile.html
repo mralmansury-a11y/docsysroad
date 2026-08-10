@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}الملف الشخصي{% endblock %}
+{% block page_title %}الملف الشخصي{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card-panel">
+            <h5><i class="fa-solid fa-id-card text-secondary"></i> بياناتي</h5>
+            <table class="table">
+                <tr><th style="width:140px;">الاسم</th><td>{{ current_user.name }}</td></tr>
+                <tr><th>البريد الإلكتروني</th><td>{{ current_user.email }}</td></tr>
+                <tr><th>الدور</th><td><span class="badge-role">{{ current_user.role_label() }}</span></td></tr>
+                <tr><th>القسم</th><td>{{ current_user.department.name if current_user.department else "—" }}</td></tr>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-panel">
+            <h5><i class="fa-solid fa-key text-secondary"></i> تغيير كلمة السر</h5>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">كلمة السر الحالية</label>
+                    <input type="password" name="current_password" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">كلمة السر الجديدة</label>
+                    <input type="password" name="new_password" class="form-control" required minlength="6">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">تأكيد كلمة السر الجديدة</label>
+                    <input type="password" name="confirm_password" class="form-control" required minlength="6">
+                </div>
+                <button class="btn btn-dark" style="background: var(--primary); border: none;">حفظ التغييرات</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

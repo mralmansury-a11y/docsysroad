@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}الأقسام{% endblock %}
+{% block page_title %}إدارة الأقسام{% endblock %}
+{% block content %}
+
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card-panel">
+            <h5><i class="fa-solid fa-building-circle-arrow-right text-secondary"></i> إضافة قسم جديد</h5>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label small">اسم القسم</label>
+                    <input type="text" name="name" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">رئيس القسم (اختياري)</label>
+                    <select name="head_uid" class="form-select">
+                        <option value="">-- بدون تحديد --</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button class="btn text-white" style="background: var(--primary);">إضافة القسم</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card-panel">
+            <h5><i class="fa-solid fa-list text-secondary"></i> الأقسام الحالية</h5>
+            <table class="table">
+                <thead><tr><th>القسم</th><th>رئيس القسم</th><th>عدد المستخدمين</th></tr></thead>
+                <tbody>
+                {% for dept in departments %}
+                <tr>
+                    <td>{{ dept.name }}</td>
+                    <td class="text-muted small">
+                        {% set head = users | selectattr('id', 'equalto', dept.head_uid) | list %}
+                        {{ head[0].name if head else "—" }}
+                    </td>
+                    <td>{{ dept.users | length }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

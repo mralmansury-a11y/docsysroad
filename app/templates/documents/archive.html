@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}الأرشيف{% endblock %}
+{% block page_title %}الأرشيف{% endblock %}
+{% block content %}
+
+<div class="card-panel">
+    <form method="GET" class="row g-2 mb-3">
+        <div class="col-md-6">
+            <input type="text" name="q" class="form-control" placeholder="بحث بالعنوان أو الرقم" value="{{ request.args.get('q','') }}">
+        </div>
+        <div class="col-md-2">
+            <button class="btn text-white w-100" style="background: var(--primary);"><i class="fa-solid fa-search"></i> بحث</button>
+        </div>
+    </form>
+
+    {% if documents %}
+    <div class="table-responsive">
+    <table class="table table-hover">
+        <thead><tr><th>الرقم</th><th>العنوان</th><th>النوع</th><th>القسم</th><th>تاريخ الأرشفة</th><th></th></tr></thead>
+        <tbody>
+        {% for d in documents %}
+        <tr>
+            <td><span class="doc-number-pill">{{ d.number }}</span></td>
+            <td>{{ d.title }}</td>
+            <td><span class="badge-type badge-type-{{ d.type }}">{{ d.type_label() }}</span></td>
+            <td>{{ d.department.name if d.department else "—" }}</td>
+            <td class="small text-muted">{{ d.created_at.strftime("%Y-%m-%d") }}</td>
+            <td><a href="{{ url_for('documents.detail', doc_id=d.id) }}" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-box-archive"></i> فتح</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="fa-solid fa-box-open fa-2x mb-2"></i>
+        <p>الأرشيف فارغ حاليًا</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

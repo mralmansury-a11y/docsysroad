@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ document.number }}{% endblock %}
+{% block page_title %}تفاصيل المستند{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <span class="doc-number-pill" style="font-size:14px;">{{ document.number }}</span>
+        <span class="badge-type badge-type-{{ document.type }} ms-2">{{ document.type_label() }}</span>
+        <span class="badge bg-success-subtle text-success-emphasis">{{ document.status_label() }}</span>
+    </div>
+    {% if current_user.can_delete_document() %}
+    <form method="POST" action="{{ url_for('documents.delete_document', doc_id=document.id) }}"
+          onsubmit="return confirm('هل أنت متأكد من حذف هذا المستند؟ لا يمكن التراجع عن هذا الإجراء.');">
+        <button class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i> حذف</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card-panel">
+            <h4>{{ document.title }}</h4>
+            <table class="table">
+                <tr><th style="width:180px;">التصنيف</th><td>{{ document.category or "—" }}</td></tr>
+                <tr><th>القسم</th><td>{{ document.department.name if document.department else "—" }}</td></tr>
+                <tr><th>المُرسِل</th><td>{{ document.sender_name }}</td></tr>
+                <tr><th>المُرسَل إليه</th><td>{{ document.recipient_name }} <span class="text-muted small">({{ document.recipient_type_label() }})</span></td></tr>
+                <tr><th>ملاحظات</th><td>{{ document.notes or "—" }}</td></tr>
+                <tr><th>تاريخ الإصدار</th><td>{{ document.created_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+                <tr><th>أُصدر بواسطة</th><td>{{ document.creator.name if document.creator else "—" }}</td></tr>
+            </table>
+
+            <div class="d-flex gap-2 flex-wrap mt-3">
+                <a href="{{ url_for('documents.download_original', doc_id=document.id) }}" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-file-arrow-down"></i> تحميل الملف الأصلي
+                </a>
+                {% if document.issued_pdf_path %}
+                <a href="{{ url_for('documents.download_issued', doc_id=document.id) }}" class="btn text-white" style="background: var(--primary);">
+                    <i class="fa-solid fa-file-pdf"></i> تحميل PDF الإصدار (يحتوي QR)
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-panel">
+            <h5><i class="fa-solid fa-clock-rotate-left text-secondary"></i> سجل التدقيق</h5>
+            {% if document.audit_logs %}
+                {% for log in document.audit_logs %}
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div>
+                        <div><strong>{{ log.action_label() }}</strong> — <span class="text-muted small">{{ log.by_name }}</span></div>
+                        <div class="small text-muted">{{ log.timestamp.strftime("%Y-%m-%d %H:%M") }}{% if log.note %} · {{ log.note }}{% endif %}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-0">لا توجد سجلات بعد.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="qr-box">
+            <h6 class="mb-3"><i class="fa-solid fa-qrcode"></i> رمز التحقق</h6>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={{ verify_url | urlencode }}" alt="QR Code">
+            <p class="small text-muted mt-3 mb-1">رابط صفحة التحقق العامة:</p>
+            <a href="{{ verify_url }}" target="_blank" class="small" style="word-break: break-all;">{{ verify_url }}</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

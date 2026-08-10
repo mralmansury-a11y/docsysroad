@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}رفع وإصدار مستند{% endblock %}
+{% block page_title %}رفع وإصدار مستند جديد{% endblock %}
+{% block content %}
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card-panel">
+            <p class="text-muted small mb-4">
+                <i class="fa-solid fa-circle-info"></i>
+                آلية العمل: ارفع الملف، حدد الجهة المُرسَل إليها، ثم اضغط "إصدار" — سيقوم النظام تلقائيًا
+                بترقيم المستند وأرشفته وتوليد رمز QR للتحقق دون الحاجة لأي مراجعة إضافية.
+            </p>
+
+            <form method="POST" enctype="multipart/form-data" id="issueForm">
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold"><span class="step-badge">1</span> رفع الملف (Word أو PDF)</label>
+                    <div class="upload-drop" id="uploadDrop">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <p class="mb-0" id="uploadDropText">اسحب الملف هنا أو اضغط للاختيار (docx, doc, pdf — حتى 10MB)</p>
+                        <p class="mb-0 fw-bold text-success d-none" id="fileNameLabel"></p>
+                    </div>
+                    <input type="file" name="file" id="fileInput" class="d-none" accept=".doc,.docx,.pdf" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold"><span class="step-badge">2</span> بيانات المستند</label>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">المُرسِل</label>
+                            <input type="text" class="form-control" value="{{ current_user.name }} — {{ current_user.department.name if current_user.department else '' }}" disabled>
+                            <div class="form-text">يتم تحديده تلقائيًا من المستخدم الحالي</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">نوع المستند *</label>
+                            <select name="type" class="form-select" required data-required-check>
+                                <option value="">-- اختر --</option>
+                                {% for key, label in doc_types.items() %}
+                                <option value="{{ key }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small">العنوان *</label>
+                            <input type="text" name="title" class="form-control" required data-required-check placeholder="مثال: خطاب تعميم بخصوص إجازة العيد">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">التصنيف (اختياري)</label>
+                            <input type="text" name="category" class="form-control" placeholder="مذكرة / قرار / خطاب">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold"><span class="step-badge">3</span> المُرسَل إليه *</label>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <select id="recipientType" name="recipient_type" class="form-select" required data-required-check>
+                                <option value="">-- نوع الجهة --</option>
+                                {% for key, label in recipient_types.items() %}
+                                <option value="{{ key }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-8 d-none" id="recipientSelectWrap">
+                            <select id="recipientSelect" name="recipient_id" class="form-select" data-required-check>
+                                <option value="">-- اختر --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 d-none" id="recipientTextWrap">
+                            <input type="text" name="recipient_name" class="form-control" placeholder="اسم الجهة الخارجية">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small">ملاحظات (اختياري)</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('documents.list_documents') }}" class="btn btn-outline-secondary">إلغاء</a>
+                    <button type="submit" id="issueSubmitBtn" class="btn btn-lg text-white" style="background: var(--primary);" disabled>
+                        <i class="fa-solid fa-bolt"></i> إصدار وأرشفة المستند
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card-panel">
+            <h6><i class="fa-solid fa-diagram-project text-secondary"></i> ماذا سيحدث بعد الإصدار؟</h6>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="small">توليد رقم تسلسلي فريد تلقائيًا (مثل IN-2026-0042)</div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="small">أرشفة المستند فورًا دون انتظار مراجعة</div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="small">توليد رمز QR فريد يشير لصفحة التحقق العامة</div></div>
+            <div class="timeline-item"><div class="timeline-dot"></div><div class="small">توليد ملف PDF جاهز للطباعة يحتوي على الرقم و QR</div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

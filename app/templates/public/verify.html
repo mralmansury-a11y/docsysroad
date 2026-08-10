@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التحقق من المستند {{ document.number }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo.png') }}">
+</head>
+<body>
+<div class="verify-hero">
+    <div class="brand-logo-wrap">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ app_name }}">
+    </div>
+    <i class="fa-solid fa-shield-halved fa-2x"></i>
+    <h2 class="mt-3 mb-1">التحقق من صحة المستند</h2>
+    <p class="mb-0 opacity-75">منظومة تتبع المستندات الداخلية</p>
+    <div class="verify-badge-ok">
+        <i class="fa-solid fa-circle-check"></i> مستند صحيح وموثّق — {{ document.status_label() }}
+    </div>
+</div>
+
+<div class="container" style="max-width: 720px; margin-top: -40px; padding-bottom: 60px;">
+    <div class="card-panel shadow-sm">
+        <div class="text-center mb-4">
+            <span class="doc-number-pill" style="font-size: 16px;">{{ document.number }}</span>
+        </div>
+        <table class="table">
+            <tr><th style="width:180px;">العنوان</th><td>{{ document.title }}</td></tr>
+            <tr><th>النوع</th><td><span class="badge-type badge-type-{{ document.type }}">{{ document.type_label() }}</span></td></tr>
+            <tr><th>القسم المُصدِر</th><td>{{ document.department.name if document.department else "—" }}</td></tr>
+            <tr><th>المُرسِل</th><td>{{ document.sender_name }}</td></tr>
+            <tr><th>المُرسَل إليه</th><td>{{ document.recipient_name }} ({{ document.recipient_type_label() }})</td></tr>
+            <tr><th>تاريخ الإصدار</th><td>{{ document.created_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+            <tr><th>الحالة</th><td><span class="badge bg-success-subtle text-success-emphasis">{{ document.status_label() }}</span></td></tr>
+        </table>
+
+        {% if document.issued_pdf_path %}
+        <div class="d-grid mt-3">
+            <a href="{{ url_for('public.verify_download', doc_id=document.id) }}" target="_blank" class="btn btn-lg text-white" style="background: var(--primary);">
+                <i class="fa-solid fa-file-pdf"></i> عرض / تحميل المستند المؤرشف
+            </a>
+        </div>
+        {% endif %}
+
+        <p class="text-center text-muted small mt-4 mb-0">
+            هذه الصفحة عامة ولا تتطلب تسجيل دخول. تم توليدها آليًا من رمز QR الخاص بالمستند.
+        </p>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo.png') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-logo-wrap">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ app_name }}">
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint=='dashboard.index' }}">
+                <i class="fa-solid fa-gauge"></i> لوحة التحكم
+            </a>
+            <a href="{{ url_for('documents.list_documents') }}" class="{{ 'active' if request.endpoint=='documents.list_documents' }}">
+                <i class="fa-solid fa-list-check"></i> المستندات
+            </a>
+            {% if current_user.can_upload_document() %}
+            <a href="{{ url_for('documents.new_document') }}" class="{{ 'active' if request.endpoint=='documents.new_document' }}">
+                <i class="fa-solid fa-file-circle-plus"></i> رفع وإصدار مستند
+            </a>
+            {% endif %}
+            <a href="{{ url_for('documents.archive') }}" class="{{ 'active' if request.endpoint=='documents.archive' }}">
+                <i class="fa-solid fa-box-archive"></i> الأرشيف
+            </a>
+            {% if current_user.can_manage_users() %}
+            <div class="sidebar-section-label">الإدارة</div>
+            <a href="{{ url_for('admin.users') }}" class="{{ 'active' if request.endpoint=='admin.users' }}">
+                <i class="fa-solid fa-users-gear"></i> إدارة المستخدمين
+            </a>
+            <a href="{{ url_for('admin.departments') }}" class="{{ 'active' if request.endpoint=='admin.departments' }}">
+                <i class="fa-solid fa-building"></i> الأقسام
+            </a>
+            {% endif %}
+        </nav>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.profile') }}"><i class="fa-solid fa-user-gear"></i> الملف الشخصي</a>
+            <a href="{{ url_for('auth.logout') }}"><i class="fa-solid fa-right-from-bracket"></i> تسجيل الخروج</a>
+        </div>
+    </aside>
+
+    <div class="main-area">
+        <header class="topbar">
+            <button class="btn-burger d-lg-none" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+            <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+            <div class="topbar-user">
+                <span class="badge-role">{{ current_user.role_label() }}</span>
+                <span class="user-name"><i class="fa-solid fa-circle-user"></i> {{ current_user.name }}</span>
+            </div>
+        </header>
+
+        <main class="content">
+            {% include "_flash.html" %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% else %}
+    {% include "_flash.html" %}
+    {% block guest_content %}{% endblock %}
+{% endif %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>
