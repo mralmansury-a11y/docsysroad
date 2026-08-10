@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 from app import db
 from app.models import Document, Department, User, AuditLog, DOC_TYPES, RECIPIENT_TYPES
 from app.utils import allowed_file, generate_document_number, human_size
-from app.pdf_utils import generate_issued_pdf
+from app.pdf_utils import generate_issued_pdf, stamp_pdf_with_letterhead
 
 documents_bp = Blueprint("documents", __name__, url_prefix="/documents")
 
@@ -147,11 +147,23 @@ def new_document():
 
         # ---- حفظ الملف الأصلي (FR-3) ----
         original_filename = secure_filename(file.filename)
+        file_ext = original_filename.rsplit(".", 1)[-1].lower() if "." in original_filename else ""
         unique_name = f"{uuid.uuid4().hex}_{original_filename}"
         dept_folder = os.path.join(current_app.config["UPLOAD_FOLDER"], str(current_user.department_id or "no-dept"))
         os.makedirs(dept_folder, exist_ok=True)
         saved_path = os.path.join(dept_folder, unique_name)
         file.save(saved_path)
+
+        # ---- طباعة الورق الرسمي (خلفية الترويسة والتذييل) على الملف الأصلي ----
+        # يُطبَّق فقط على ملفات PDF (لا يمكن ختم ملفات Word مباشرة دون تحويلها أولًا)
+        if file_ext == "pdf":
+            try:
+                stamped_tmp_path = saved_path + ".stamped.pdf"
+                stamp_pdf_with_letterhead(saved_path, stamped_tmp_path)
+                os.replace(stamped_tmp_path, saved_path)
+            except Exception:
+                current_app.logger.exception("فشل طباعة الورق الرسمي على الملف الأصلي - سيتم أرشفة الملف بدون ختم")
+
         rel_file_path = os.path.relpath(saved_path, current_app.config["UPLOAD_FOLDER"]).replace("\\", "/")
 
         # ==== عملية الإصدار الواحدة (Transaction) - FR-2.4 ====
@@ -180,7 +192,7 @@ def new_document():
             verify_url = f"{current_app.config['APP_DOMAIN']}/verify/{document.id}"
             document.qr_data = verify_url
 
-            # ---- توليد PDF الإصدار مع QR (FR-2.4 / FR-6.3) ----
+            # ---- توليد PDF الإصدار مع QR فوق الورق الرسمي (FR-2.4 / FR-6.3) ----
             issued_filename = f"{number.replace('/', '-')}_{uuid.uuid4().hex[:8]}.pdf"
             issued_dept_folder = os.path.join(current_app.config["ISSUED_FOLDER"], str(current_user.department_id or "no-dept"))
             os.makedirs(issued_dept_folder, exist_ok=True)
