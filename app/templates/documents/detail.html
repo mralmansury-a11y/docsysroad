@@ -40,6 +40,12 @@
                     <i class="fa-solid fa-file-pdf"></i> تحميل PDF الإصدار (يحتوي QR)
                 </a>
                 {% endif %}
+                {% set _fp = document.file_path.lower() %}
+                {% if _fp.endswith('.pdf') or _fp.endswith('.docx') %}
+                <a href="{{ url_for('documents.download_original_marked', doc_id=document.id) }}" class="btn btn-outline-dark">
+                    <i class="fa-solid fa-qrcode"></i> تحميل الملف الأصلي مع الباركود والرقم المرجعي
+                </a>
+                {% endif %}
             </div>
         </div>
 
