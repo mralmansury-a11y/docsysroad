@@ -79,6 +79,56 @@ def ar(text):
     return get_display(reshaped)
 
 
+def _draw_qr_reference_card(c, page_h, qr_img, document_number, font_bold):
+    """
+    يرسم بطاقة QR صغيرة + الرقم المرجعي أعلى يسار الصفحة (نفس التصميم
+    المستخدم في كل مكان بالنظام لهذا الغرض) على كائن canvas مُمرَّر.
+    """
+    primary = HexColor("#1a2b4c")
+    accent = HexColor("#c9a227")
+
+    qr_size = 22 * mm
+    qr_margin_left = 11 * mm
+    qr_margin_top = 8 * mm
+    qr_x = qr_margin_left
+    qr_y = page_h - qr_margin_top - qr_size
+
+    card_pad = 2 * mm
+    c.setFillColor(HexColor("#ffffff"))
+    c.setStrokeColor(primary)
+    c.setLineWidth(0.7)
+    c.roundRect(
+        qr_x - card_pad, qr_y - card_pad,
+        qr_size + 2 * card_pad, qr_size + 2 * card_pad,
+        2 * mm, fill=True, stroke=True,
+    )
+    c.drawImage(qr_img, qr_x, qr_y, width=qr_size, height=qr_size, mask="auto")
+
+    if document_number:
+        c.setFillColor(primary)
+        c.setFont(font_bold, 8.5)
+        c.drawCentredString(qr_x + qr_size / 2, qr_y - card_pad - 5 * mm, str(document_number))
+
+    c.setStrokeColor(accent)
+    c.setLineWidth(1.1)
+    c.line(
+        qr_x - card_pad, qr_y - card_pad - 7 * mm,
+        qr_x + qr_size + card_pad, qr_y - card_pad - 7 * mm,
+    )
+
+
+def _make_qr_reader(verify_url):
+    """يولّد صورة QR في الذاكرة ويعيدها كـ ImageReader جاهز للاستخدام مع reportlab"""
+    qr_buffer = io.BytesIO()
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=2)
+    qr.add_data(verify_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#1a2b4c", back_color="white")
+    img.save(qr_buffer, format="PNG")
+    qr_buffer.seek(0)
+    return ImageReader(qr_buffer)
+
+
 def generate_qr_image(data, save_path):
     qr = qrcode.QRCode(
         version=None,
@@ -295,14 +345,19 @@ def generate_issued_pdf(document, save_path, verify_url):
     return save_path
 
 
-def stamp_pdf_with_letterhead(input_path, output_path):
+def stamp_pdf_with_qr(input_path, output_path, verify_url, document_number):
     """
-    يطبع الورق الرسمي (كخلفية) خلف كل صفحة من ملف PDF موجود، ويحافظ على
-    محتوى الملف الأصلي فوق الخلفية. يُستخدم لختم الملفات الأصلية المرفوعة
-    (PDF) بهوية الجهاز الرسمية قبل أرشفتها/تنزيلها.
+    يُضيف بطاقة رمز QR صغيرة + الرقم المرجعي أعلى الصفحة الأولى فقط من
+    ملف PDF موجود، دون طباعة أي ورق رسمي (letterhead) ودون أي تعديل على
+    بقية الصفحات - يبقى محتوى الملف كما هو تمامًا باستثناء إضافة بطاقة
+    QR في الزاوية العلوية اليسرى من الصفحة الأولى.
 
-    ملاحظة: يعمل فقط على ملفات PDF. ملفات Word (doc/docx) لا يمكن ختمها
-    مباشرة بهذه الطريقة لأنها ليست بصيغة PDF.
+    يُستخدم لختم الملف الأصلي المرفوع (PDF) عند الأرشفة (FR-2/FR-3)،
+    بنفس فكرة stamp_docx_with_qr المستخدمة لملفات Word في
+    app/docx_utils.py (ترويسة الصفحة الأولى فقط، بدون تغيير باقي الملف).
+
+    لطباعة الورق الرسمي (letterhead) خلف الصفحات استخدم
+    stamp_pdf_with_letterhead بدلاً من ذلك.
     """
     from pypdf import PdfReader, PdfWriter
 
@@ -310,9 +365,72 @@ def stamp_pdf_with_letterhead(input_path, output_path):
     if getattr(reader, "is_encrypted", False):
         raise ValueError("لا يمكن ختم ملف PDF محمي بكلمة سر")
 
+    _ensure_fonts()
+    font_bold = "Arabic-Bold" if os.path.exists(FONT_BOLD) else "Helvetica-Bold"
+    qr_img = _make_qr_reader(verify_url)
+
     writer = PdfWriter()
 
-    for page in reader.pages:
+    for index, page in enumerate(reader.pages):
+        if index == 0:
+            page_w = float(page.mediabox.width)
+            page_h = float(page.mediabox.height)
+
+            overlay_buffer = io.BytesIO()
+            overlay_canvas = canvas.Canvas(overlay_buffer, pagesize=(page_w, page_h))
+            _draw_qr_reference_card(overlay_canvas, page_h, qr_img, document_number, font_bold)
+            overlay_canvas.showPage()
+            overlay_canvas.save()
+            overlay_buffer.seek(0)
+
+            overlay_reader = PdfReader(overlay_buffer)
+            overlay_page = overlay_reader.pages[0]
+            # دمج بطاقة QR فوق محتوى الصفحة الأصلية (فوقه، وليس خلفه كما في حالة الورق الرسمي)
+            page.merge_page(overlay_page)
+
+        writer.add_page(page)
+
+    with open(output_path, "wb") as f:
+        writer.write(f)
+
+    return output_path
+
+
+def stamp_pdf_with_letterhead(input_path, output_path, verify_url=None, document_number=None):
+    """
+    يطبع الورق الرسمي (كخلفية) خلف كل صفحة من ملف PDF موجود، ويحافظ على
+    محتوى الملف الأصلي فوق الخلفية. يُستخدم لختم الملفات الأصلية المرفوعة
+    (PDF) بهوية الجهاز الرسمية قبل أرشفتها/تنزيلها.
+
+    إذا مُرِّر verify_url (ويُفضَّل مع document_number أيضًا)، تُضاف بطاقة
+    رمز QR صغيرة + الرقم المرجعي فوق الورق الرسمي في الصفحة الأولى فقط من
+    الملف (لا تتكرر في بقية الصفحات) — هذه الحالة تُستخدم عند توليد نسخة
+    "الملف الأصلي مع الباركود والرقم المرجعي" عند الطلب من صفحة تفاصيل
+    المستند (download_original_marked). عند عدم تمرير verify_url (كما في
+    ختم الملف الأصلي عند الرفع) تُطبع الخلفية الرسمية فقط دون أي إضافات،
+    للحفاظ على التوافق مع الاستخدام السابق للدالة.
+
+    ملاحظة: يعمل فقط على ملفات PDF. ملفات Word (doc/docx) لا يمكن ختمها
+    مباشرة بهذه الطريقة لأنها ليست بصيغة PDF - استخدم stamp_docx_with_qr
+    (في app/docx_utils.py) بدلاً من ذلك.
+    """
+    from pypdf import PdfReader, PdfWriter
+
+    reader = PdfReader(input_path)
+    if getattr(reader, "is_encrypted", False):
+        raise ValueError("لا يمكن ختم ملف PDF محمي بكلمة سر")
+
+    # ===== تجهيز رمز QR مسبقًا (يُستخدم فقط في الصفحة الأولى إن طُلب) =====
+    qr_img = None
+    font_bold = None
+    if verify_url:
+        qr_img = _make_qr_reader(verify_url)
+        _ensure_fonts()
+        font_bold = "Arabic-Bold" if os.path.exists(FONT_BOLD) else "Helvetica-Bold"
+
+    writer = PdfWriter()
+
+    for index, page in enumerate(reader.pages):
         page_w = float(page.mediabox.width)
         page_h = float(page.mediabox.height)
 
@@ -320,13 +438,18 @@ def stamp_pdf_with_letterhead(input_path, output_path):
         bg_buffer = io.BytesIO()
         bg_canvas = canvas.Canvas(bg_buffer, pagesize=(page_w, page_h))
         draw_letterhead_background(bg_canvas, page_w, page_h)
+
+        # ===== بطاقة QR + الرقم المرجعي فوق الورق الرسمي (الصفحة الأولى فقط) =====
+        if index == 0 and qr_img is not None:
+            _draw_qr_reference_card(bg_canvas, page_h, qr_img, document_number, font_bold)
+
         bg_canvas.showPage()
         bg_canvas.save()
         bg_buffer.seek(0)
 
         bg_reader = PdfReader(bg_buffer)
         bg_page = bg_reader.pages[0]
-        # دمج محتوى الصفحة الأصلية فوق خلفية الورق الرسمي
+        # دمج محتوى الصفحة الأصلية فوق خلفية الورق الرسمي (+ بطاقة QR إن وُجدت)
         bg_page.merge_page(page)
         writer.add_page(bg_page)
 
