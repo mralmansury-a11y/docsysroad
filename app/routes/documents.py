@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 from app import db
 from app.models import Document, Department, User, AuditLog, DOC_TYPES, RECIPIENT_TYPES
 from app.utils import allowed_file, generate_document_number, human_size
-from app.pdf_utils import generate_issued_pdf, stamp_pdf_with_letterhead
+from app.pdf_utils import generate_issued_pdf, stamp_pdf_with_qr
 from app.docx_utils import stamp_docx_with_qr
 
 documents_bp = Blueprint("documents", __name__, url_prefix="/documents")
@@ -155,18 +155,9 @@ def new_document():
         saved_path = os.path.join(dept_folder, unique_name)
         file.save(saved_path)
 
-        # ---- طباعة الورق الرسمي (خلفية الترويسة والتذييل) على الملف الأصلي ----
-        # يُطبَّق فقط على ملفات PDF (لا يمكن ختم ملفات Word مباشرة دون تحويلها أولًا)
-        # ملاحظة: هذا الختم لا يضيف رمز QR - الملف الأصلي المؤرشف يبقى كما هو
-        # (بالترويسة الرسمية فقط)، ويمكن الحصول على نسخة منه مع الباركود
-        # والرقم المرجعي لاحقًا عبر زر "تحميل مع الباركود" دون المساس بالأصل.
-        if file_ext == "pdf":
-            try:
-                stamped_tmp_path = saved_path + ".stamped.pdf"
-                stamp_pdf_with_letterhead(saved_path, stamped_tmp_path)
-                os.replace(stamped_tmp_path, saved_path)
-            except Exception:
-                current_app.logger.exception("فشل طباعة الورق الرسمي على الملف الأصلي - سيتم أرشفة الملف بدون ختم")
+        # ملاحظة: لا يُطبَّق أي ختم على الملف هنا. رقم المستند ورابط التحقق (QR)
+        # غير معروفين بعد في هذه المرحلة - يتم ختم الملف الأصلي (لملفات PDF)
+        # بعد إنشائهما داخل معاملة الإصدار أدناه (انظر stamp_pdf_with_qr).
 
         rel_file_path = os.path.relpath(saved_path, current_app.config["UPLOAD_FOLDER"]).replace("\\", "/")
 
@@ -195,6 +186,20 @@ def new_document():
 
             verify_url = f"{current_app.config['APP_DOMAIN']}/verify/{document.id}"
             document.qr_data = verify_url
+
+            # ---- إضافة رمز QR والرقم المرجعي أعلى الصفحة الأولى من الملف الأصلي (PDF فقط) ----
+            # لا يُطبَع أي ورق رسمي (letterhead) هنا - يبقى محتوى الملف الأصلي كما هو
+            # تمامًا باستثناء بطاقة QR الصغيرة أعلى الصفحة الأولى، بنفس فكرة ختم
+            # ملفات .docx (ترويسة الصفحة الأولى فقط دون المساس ببقية الملف).
+            if file_ext == "pdf":
+                try:
+                    stamped_tmp_path = saved_path + ".stamped.pdf"
+                    stamp_pdf_with_qr(saved_path, stamped_tmp_path, verify_url, number)
+                    os.replace(stamped_tmp_path, saved_path)
+                except Exception:
+                    current_app.logger.exception(
+                        "فشل إضافة رمز QR والرقم المرجعي إلى الملف الأصلي - سيتم أرشفة الملف بدون ختم"
+                    )
 
             # ---- توليد PDF الإصدار مع QR فوق الورق الرسمي (FR-2.4 / FR-6.3) ----
             issued_filename = f"{number.replace('/', '-')}_{uuid.uuid4().hex[:8]}.pdf"
@@ -287,14 +292,19 @@ def download_issued(doc_id):
 @login_required
 def download_original_marked(doc_id):
     """
-    تحميل نسخة من الملف الأصلي بعد إضافة رمز QR والرقم المرجعي فوق الصفحة
-    الأولى فقط منها. تُولَّد هذه النسخة عند الطلب فقط ولا تُخزَّن على
-    الخادم، ولا تمس الملف الأصلي المؤرشف إطلاقًا.
+    تحميل نسخة من الملف الأصلي بالباركود والرقم المرجعي، بدون أي طباعة
+    للورق الرسمي (letterhead) في هذا الزر تحديدًا.
 
-    - ملفات PDF: تُضاف الترويسة الرسمية + رمز QR + الرقم المرجعي فوق
-      الصفحة الأولى (عبر pdf_utils).
+    - ملفات PDF: الملفات المرفوعة بعد هذا التحديث تحمل بالفعل رمز QR
+      والرقم المرجعي في أصلها المؤرشف (يُضافان تلقائيًا عند الرفع - انظر
+      new_document)، لذا يكتفي هذا المسار بتنزيل الملف الأصلي كما هو
+      دون أي معالجة إضافية - لا طباعة للورق الرسمي ولا إعادة إضافة رمز QR
+      (تفاديًا لتكراره). ملاحظة: الملفات القديمة المرفوعة قبل هذا
+      التحديث لا تحمل QR في أصلها، وستُنزَّل عبر هذا الزر بدون رمز QR.
     - ملفات .docx: يُدرج رمز QR والرقم المرجعي داخل ترويسة الصفحة الأولى
-      فقط، مع بقاء الملف .docx قابلاً للتحرير (عبر docx_utils).
+      فقط (بدون ورق رسمي)، مع بقاء الملف .docx قابلاً للتحرير (عبر
+      docx_utils) - لا تزال هذه الملفات غير مختومة عند الرفع، لذا يبقى
+      هذا المسار هو وسيلة إضافة QR الوحيدة لها.
     - ملفات .doc القديمة: غير مدعومة تقنيًا لهذه الميزة.
     """
     document = Document.query.get_or_404(doc_id)
@@ -312,22 +322,25 @@ def download_original_marked(doc_id):
     if not os.path.exists(original_full_path):
         abort(404)
 
+    download_name = f"{document.number.replace('/', '-')}_{original_name}"
+
+    # ---- PDF: الأصل يحمل QR والرقم المرجعي بالفعل من لحظة الرفع - تنزيل مباشر دون معالجة ----
+    if file_ext == "pdf":
+        return send_file(
+            original_full_path, as_attachment=True, download_name=download_name, mimetype="application/pdf"
+        )
+
+    # ---- docx: إضافة QR والرقم المرجعي عند الطلب (لا تُختم عند الرفع) ----
     verify_url = document.qr_data or f"{current_app.config['APP_DOMAIN']}/verify/{document.id}"
     tmp_path = os.path.join(
         current_app.config["UPLOAD_FOLDER"], f".tmp_marked_{uuid.uuid4().hex}.{file_ext}"
     )
 
     try:
-        if file_ext == "pdf":
-            stamp_pdf_with_letterhead(
-                original_full_path, tmp_path, verify_url=verify_url, document_number=document.number
-            )
-            mimetype = "application/pdf"
-        else:  # docx
-            stamp_docx_with_qr(
-                original_full_path, tmp_path, verify_url=verify_url, document_number=document.number
-            )
-            mimetype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        stamp_docx_with_qr(
+            original_full_path, tmp_path, verify_url=verify_url, document_number=document.number
+        )
+        mimetype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     except Exception:
         current_app.logger.exception("فشل توليد نسخة الملف الأصلي مع الباركود والرقم المرجعي")
         flash("حدث خطأ أثناء توليد نسخة الملف مع الباركود، الرجاء المحاولة لاحقًا", "danger")
@@ -341,7 +354,6 @@ def download_original_marked(doc_id):
             pass
         return response
 
-    download_name = f"{document.number.replace('/', '-')}_{original_name}"
     return send_file(tmp_path, as_attachment=True, download_name=download_name, mimetype=mimetype)
 
 
